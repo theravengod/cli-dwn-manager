@@ -1,0 +1,9 @@
+[package]
+name = "dwn-manager-lib"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+reqwest = "0.12.24"
+colored = "3.0.0"
+console = "0.16.1"

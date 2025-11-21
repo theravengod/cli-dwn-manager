@@ -1,0 +1,6 @@
+[workspace]
+resolver = "3"
+members = [
+    "dwn-manager-lib",
+    "dwn-manager-bin"
+]
