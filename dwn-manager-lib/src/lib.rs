@@ -1,30 +1,33 @@
+use std::fs::File;
+use std::io::copy;
+use reqwest::blocking::Client;
+
 pub fn exec() {
     println!("Alive !")
 }
 
+// Needs blocking client
+fn download_file(blocking_client: Client, url: &str, output_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Starting download from: {}", url);
+
+    let mut response = blocking_client.get(url).send()?;
+    let mut output_file = File::create(output_path)?;
+
+    copy(&mut response, &mut output_file)?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    // use cargo test --color=always --workspace -- --show-output
+    use super::*;
+    // run with cargo test --color=always --workspace -- --show-output
     #[test]
     fn call_with_reqwest() {
-        let rt = tokio::runtime::Runtime::new().unwrap();
+        let url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c020";
+        let client = reqwest::blocking::Client::new();
 
-        rt.block_on(async {
-            let url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c020".to_string();
-            let client = reqwest::Client::new();
-
-            let body = client
-                .get(url)
-                .send()
-                .await
-                .expect("HTTP error")
-                .text()
-                .await
-                .unwrap();
-
-            println!("Got body: {:?}", body);
-
-            assert!(!body.is_empty());
-        });
+        let result = download_file(client, url, "../test.txt");
+        assert!(result.is_ok())
     }
 }
