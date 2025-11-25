@@ -51,18 +51,6 @@ fn download_file(
     } else {
         Err(Box::new(err_payload.unwrap()))
     }
-
-
-
-    /*if let Err(e) = response {
-        let error_code = e.status().unwrap().as_u16();
-        eprintln!("{:?} Error downloading file", format!("[{}]", error_code).bright_red());
-        return Err(Box::new(e));
-    }
-
-    copy(response.as_mut().unwrap(), &mut output_file)?;
-
-    Ok(())*/
 }
 
 #[cfg(test)]
