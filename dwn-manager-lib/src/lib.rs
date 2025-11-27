@@ -5,12 +5,14 @@ use std::io::copy;
 
 pub fn exec() {
     println!("Alive !");
+    let good_url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c020";
+    let bad_url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c0201";
 
-    let result = download_file(reqwest::blocking::Client::new(), "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c0201", "./kpu.txt");
+    let result = download_file(reqwest::blocking::Client::new(), good_url, "./kpu.txt");
     match result {
         Ok(c_size) => {
             println!("[✅ ] Downloaded {} bytes", c_size);
-        },
+        }
         Err(e) => {
             eprintln!("[❌ ] Something went wrong: {:?}", e);
         }
