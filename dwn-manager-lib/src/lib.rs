@@ -6,7 +6,6 @@ use std::io::copy;
 pub fn exec() {
     println!("Alive !");
     let good_url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c020";
-    let bad_url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c0201";
 
     let result = download_file(reqwest::blocking::Client::new(), good_url, "./kpu.txt");
     match result {
@@ -24,7 +23,7 @@ fn download_file(
     blocking_client: Client,
     url: &str,
     output_path: &str,
-) -> Result<(u64), Box<dyn std::error::Error>> {
+) -> Result<u64, Box<dyn std::error::Error>> {
     let response = blocking_client.get(url).send();
 
     let (payload, err_payload) = match response {
@@ -37,15 +36,18 @@ fn download_file(
         let status_code = data.status();
         if status_code.is_success() {
             println!("[✅ ] Got code: {}", status_code.as_u16());
-            let mut output_file = File::create(output_path)?;
 
-            let copy_result = copy(&mut data, &mut output_file);
-            if copy_result.is_ok() {
-                let copied_size = copy_result.unwrap();
-                println!("[✅ ] Copied successfully {} bytes", copied_size);
-                Ok(copied_size)
-            } else {
-                Err(Box::new(copy_result.err().unwrap()))
+            let output_file = File::create(output_path);
+            match output_file {
+                Ok(mut file) => {
+                    copy(&mut data, &mut file)
+                        .inspect(|size| println!("[✅ ] Copied successfully {} bytes", size))
+                        .map_err(Box::from)
+                }
+                Err(e) => {
+                    eprintln!("[❌ ] Could not create file at location {}: {}", output_path, e);
+                    Err(Box::from(e))
+                }
             }
         } else {
             Err(format!("Received code: {}", status_code.as_u16()).into())
@@ -58,13 +60,36 @@ fn download_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     // run with: cargo test --color=always --workspace -- --show-output
     #[test]
-    fn call_with_reqwest() {
+    fn test_good_call() {
         let url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c020";
         let client = reqwest::blocking::Client::new();
 
         let result = download_file(client, url, "../test.txt");
-        assert!(result.is_ok())
+        assert!(result.is_ok());
+        assert!(fs::remove_file("../test.txt").is_ok())
+    }
+
+    #[test]
+    fn test_good_call_but_no_file_access() {
+        let url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c020";
+        let client = reqwest::blocking::Client::new();
+
+        let _ = download_file(client, url, "/test.txt");
+        assert!(!fs::exists("../test.txt").unwrap());
+    }
+
+    #[test]
+    fn test_bad_call() {
+        let bad_url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c0201";
+        let client = reqwest::blocking::Client::new();
+
+        let result = download_file(client, bad_url, "../test.txt");
+        assert!(result.is_err());
+        if fs::exists("../test.txt").unwrap() {
+            assert!(fs::remove_file("../test.txt").is_ok())
+        }
     }
 }
