@@ -3,10 +3,40 @@ use reqwest::header::CONTENT_LENGTH;
 use std::error::Error;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::time::Duration;
+use std::thread;
 
 pub fn exec() {
     println!("Alive !");
+
     let good_url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c020";
+
+    let mut tasks = Vec::new();
+
+    for i in 0..5 {
+        tasks.push(
+            thread::spawn(move || {
+                let client = reqwest::blocking::Client::new();
+                let result =
+                    download_file(client, good_url, format!("./kpu_{}.txt", i).as_str(), format!("t{}", i).as_str());
+                thread::sleep(Duration::from_secs(5));
+                match result {
+                    Ok(_) => {
+                        println!("[✅] Successful");
+                    }
+                    Err(e) => {
+                        eprintln!("[❌] Something went wrong: {:?}", e);
+                    }
+                }
+            })
+        );
+    }
+
+    for th in tasks {
+        th.join().unwrap();
+    }
+
+    /*let good_url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c020";
 
     let result = download_file(reqwest::blocking::Client::new(), good_url, "./kpu.txt");
     match result {
@@ -16,7 +46,7 @@ pub fn exec() {
         Err(e) => {
             eprintln!("[❌] Something went wrong: {:?}", e);
         }
-    }
+    }*/
 }
 
 // Needs blocking client
@@ -24,6 +54,7 @@ fn download_file(
     blocking_client: Client,
     url: &str,
     output_path: &str,
+    tag: &str
 ) -> Result<(), Option<Box<dyn std::error::Error>>> {
     let response = blocking_client.get(url).send();
 
@@ -40,10 +71,10 @@ fn download_file(
             .and_then(|s| s.parse().ok())
             .unwrap_or(0);
 
-        println!("[✅] Got data !");
+        println!("[✅] {} Got data !", tag);
         let status_code = data.status();
         if status_code.is_success() {
-            println!("[✅] Got code: {}", status_code.as_u16());
+            println!("[✅] {} Got code: {}", tag, status_code.as_u16());
 
             let output_file = File::create(output_path);
             match output_file {
@@ -51,17 +82,16 @@ fn download_file(
                     let progress_reporter = |downloaded: u64| {
                         if total_size > 0 {
                             let percentage = (downloaded as f64 / total_size as f64) * 100.0;
-                            println!("Downloaded {}% of file", percentage);
+                            println!("{} Downloaded {}% of file", tag, percentage);
                         } else {
-                            println!("Downloaded {} bytes", downloaded);
+                            println!("{} Downloaded {} bytes", tag, downloaded);
                         }
                     };
                     copy_with_progress(&mut data, &mut file, progress_reporter)
                 }
                 Err(e) => {
                     eprintln!(
-                        "[❌] Could not create file at location {}: {}",
-                        output_path, e
+                        "[❌] {} Could not create file at location {}: {}", tag, output_path, e
                     );
                     Err(Some(Box::from(e)))
                 }
@@ -127,7 +157,7 @@ mod tests {
         let url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c020";
         let client = reqwest::blocking::Client::new();
 
-        let result = download_file(client, url, "../test.txt");
+        let result = download_file(client, url, "../test.txt", "tt");
         assert!(result.is_ok());
         assert!(fs::remove_file("../test.txt").is_ok())
     }
@@ -137,7 +167,7 @@ mod tests {
         let url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c020";
         let client = reqwest::blocking::Client::new();
 
-        let result = download_file(client, url, "/test.txt");
+        let result = download_file(client, url, "/test.txt", "tt");
         assert!(result.is_err());
         assert!(!fs::exists("/test.txt").unwrap());
     }
@@ -147,7 +177,7 @@ mod tests {
         let bad_url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c0201";
         let client = reqwest::blocking::Client::new();
 
-        let result = download_file(client, bad_url, "../test.txt");
+        let result = download_file(client, bad_url, "../test.txt", "tt");
         assert!(result.is_err());
         if fs::exists("../test.txt").unwrap() {
             assert!(fs::remove_file("../test.txt").is_ok())
