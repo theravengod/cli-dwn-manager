@@ -1,4 +1,3 @@
-use colored::Colorize;
 use reqwest::blocking::Client;
 use std::fs::File;
 use std::io::copy;
@@ -10,13 +9,15 @@ pub fn exec() {
     let result = download_file(reqwest::blocking::Client::new(), good_url, "./kpu.txt");
     match result {
         Ok(c_size) => {
-            println!("[✅ ] Downloaded {} bytes", c_size);
+            println!("[✅] Downloaded {} bytes", c_size);
         }
         Err(e) => {
-            eprintln!("[❌ ] Something went wrong: {:?}", e);
+            eprintln!("[❌] Something went wrong: {:?}", e);
         }
     }
 }
+
+fn spawn_dwn_thread()
 
 // Needs blocking client
 fn download_file(
@@ -32,20 +33,20 @@ fn download_file(
     };
 
     if let Some(mut data) = payload {
-        println!("[✅ ] Got data !");
+        println!("[✅] Got data !");
         let status_code = data.status();
         if status_code.is_success() {
-            println!("[✅ ] Got code: {}", status_code.as_u16());
+            println!("[✅] Got code: {}", status_code.as_u16());
 
             let output_file = File::create(output_path);
             match output_file {
                 Ok(mut file) => {
                     copy(&mut data, &mut file)
-                        .inspect(|size| println!("[✅ ] Copied successfully {} bytes", size))
+                        .inspect(|size| println!("[✅] Copied successfully {} bytes", size))
                         .map_err(Box::from)
                 }
                 Err(e) => {
-                    eprintln!("[❌ ] Could not create file at location {}: {}", output_path, e);
+                    eprintln!("[❌] Could not create file at location {}: {}", output_path, e);
                     Err(Box::from(e))
                 }
             }
@@ -77,8 +78,9 @@ mod tests {
         let url = "https://mocki.io/v1/0e910579-8fd2-496c-8d1a-cf743041c020";
         let client = reqwest::blocking::Client::new();
 
-        let _ = download_file(client, url, "/test.txt");
-        assert!(!fs::exists("../test.txt").unwrap());
+        let result = download_file(client, url, "/test.txt");
+        assert!(result.is_err());
+        assert!(!fs::exists("/test.txt").unwrap());
     }
 
     #[test]
